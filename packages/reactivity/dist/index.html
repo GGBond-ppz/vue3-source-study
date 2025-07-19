@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script> -->
+    <script src="./reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      // effect 代表的是副作用函数，如果此函数所依赖的数据发生了变化，函数会重新执行
+      // reactive 将数据变成响应式
+      const { effect, reactive } = VueReactivity;
+
+      const state = reactive({ name: "zf", age: 13 });
+      // 此effect函数默认会执行依次，对响应式数据取值
+      // 取值的过程中数据会依赖档期那的effect
+      effect(() => {
+        app.innerHTML = state.name + "今年" + state.age + "岁了";
+      });
+
+      // 稍后数据变化会执行effect的回调
+      setTimeout(() => {
+        state.age = 14;
+      }, 1000);
+    </script>
+  </body>
+</html>
