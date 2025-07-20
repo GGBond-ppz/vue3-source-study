@@ -1,35 +1,61 @@
 export let activeEffect = undefined;
+
+function cleanupEffect(effect) {
+  const { deps } = effect;
+  for (let i = 0; i < deps.length; i++) {
+    deps[i].delete(effect);
+  }
+  effect.deps.length = 0;
+}
+
 class ReactiveEffect {
   public deps = []; // 记录effect依赖了哪些属性
   public parent = null; // parent记录外层effect的实例，effect可能会有嵌套
   public active = true; // 这个effect默认是激活状态
-  constructor(public fn) {}
+  constructor(public fn, public scheduler) {}
 
   // 执行effect
   run() {
     // 如果是非激活的情况，只需要执行函数，不需要依赖收集
     if (!this.active) {
-      this.fn();
+      return this.fn();
     }
     try {
       // 这里进行依赖收集，核心就是将当前的effect和稍后渲染的属性关联在一起
       // 将当前实例保存，稍后调用取值操作的时候，就可以去到这个全局的activeEffect了
       this.parent = activeEffect;
       activeEffect = this;
-      this.fn();
+
+      // 这里我们需要在执行用户函数之前将之前收集的内容情况
+      // activeEffect.deps = [(Set),(Set)]
+      cleanupEffect(this);
+
+      return this.fn();
     } finally {
       activeEffect = this.parent;
     }
   }
+
+  stop() {
+    if (this.active) {
+      this.active = false;
+      cleanupEffect(this); // 停止effect收集
+    }
+  }
 }
 
-export function effect(fn) {
+export function effect(fn, options: any = {}) {
   // fn可以根据状态变化重新执行，effect可以嵌套
 
   // 创建响应式effect
-  const _effect = new ReactiveEffect(fn);
+  const _effect = new ReactiveEffect(fn, options.scheduler);
 
   _effect.run(); // 默认先执行一次
+
+  const runner = _effect.run.bind(_effect);
+
+  runner.effect = _effect; // 将effect华仔到runner函数上
+  return runner;
 }
 
 /**
@@ -71,11 +97,21 @@ export function trigger(target, type, key, value, oldValue) {
   // 触发的值不在模板中使用直接返回
   if (!depsMap) return;
 
-  const effects = depsMap.get(key);
-  effects &&
-    effects.forEach((effect) => {
-      // 如果在执行当前effect中又修改了依赖的属性，会无线循环执行当前effect
-      // 判断一下如果当前effect重复调用就不执行
-      if (effect !== activeEffect) effect.run();
-    });
+  let effects = depsMap.get(key);
+  // 永远再执行前，拷贝一份来执行，不要关联引用
+  if (effects) {
+    effects = new Set(effects);
+    effects &&
+      effects.forEach((effect) => {
+        // 如果在执行当前effect中又修改了依赖的属性，会无线循环执行当前effect
+        // 判断一下如果当前effect重复调用就不执行
+        if (effect !== activeEffect) {
+          if (effect.scheduler) {
+            effect.scheduler();
+          } else {
+            effect.run();
+          }
+        }
+      });
+  }
 }

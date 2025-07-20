@@ -1,4 +1,6 @@
+import { isObject } from "@my-vue/shared";
 import { track, trigger } from "./effect";
+import { reactive } from "./reactive";
 
 export const enum ReactiveFlags {
   IS_REACTIVE = "__v_isReactive",
@@ -17,7 +19,11 @@ export const mutableHandler = {
      * receiver如果target对象中指定了getter，receiver则为getter调用时的this值。
      * 目的：对象中使用get属性选择器返回对象中的属性this.xx，需要将对象的this指向改为代理对象
      */
-    return Reflect.get(target, key, receiver);
+    let res = Reflect.get(target, key, receiver);
+    if (isObject(res)) {
+      return reactive(res); // 深度代理实现，取值的时候才会代理，性能好
+    }
+    return res;
   },
   set(target, key, value, receiver) {
     let oldValue = target[key];
