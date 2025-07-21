@@ -4,6 +4,11 @@ import { mutableHandler, ReactiveFlags } from "./baseHandler";
 // 将数据转换成响应式数据，只能做对象的代理
 const reactiveMap = new WeakMap(); // key只能是对象
 
+// 判断是否是一个响应式代理对象
+export function isReactive(value) {
+  return !!(value && value[ReactiveFlags.IS_REACTIVE]);
+}
+
 export function reactive(target) {
   if (!isObject(target)) {
     return;

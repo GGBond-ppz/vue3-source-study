@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/vue/dist/vue.global.js"></script> -->
+    <script src="./reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      // const { watch, reactive } = Vue;
+      const { watch, reactive } = VueReactivity;
+      let state = reactive({ name: "a", address: { num: 10 } });
+      watch(
+        () => state.name,
+        function (newValue, oldValue, onCleanup) {
+          onCleanup(() => {
+            console.log("aaa");
+          });
+          console.log(newValue, oldValue);
+        }
+      );
+
+      setTimeout(() => {
+        state.name = "b";
+        state.name = "c";
+        state.name = "d";
+        state.name = "e";
+        state.name = "f";
+      }, 1000);
+    </script>
+  </body>
+</html>

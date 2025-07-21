@@ -1,5 +1,5 @@
-import { isObject } from "@my-vue/shared";
-import { track, trigger } from "./effect";
+import { hasOwn, isObject } from "@my-vue/shared";
+import { ITERATE_KEY, track, trigger } from "./effect";
 import { reactive } from "./reactive";
 
 export const enum ReactiveFlags {
@@ -27,13 +27,22 @@ export const mutableHandler = {
   },
   set(target, key, value, receiver) {
     let oldValue = target[key];
+    const hasKey = hasOwn(target, key);
     let result = Reflect.set(target, key, value, receiver);
     // 值变化了
     if (oldValue !== value) {
       // 派发更新
-      trigger(target, "set", key, value, oldValue);
+      if (!hasKey) {
+        trigger(target, "add", key, value, oldValue);
+      } else {
+        trigger(target, "set", key, value, oldValue);
+      }
     }
 
     return result;
+  },
+  ownKeys(target) {
+    track(target, "iterate", ITERATE_KEY);
+    return Reflect.ownKeys(target);
   },
 };

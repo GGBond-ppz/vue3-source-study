@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/@vue/reactivity/dist/reactivity.global.js"></script> -->
+    <script src="./reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      let waiting = false;
+      const { effect, reactive, computed } = VueReactivity;
+
+      const state = reactive({ firstName: "姜", lastName: "文" });
+      const fullName = computed({
+        get() {
+          return state.firstName + state.lastName;
+        },
+        set(newValue) {
+          console.log(newValue);
+        },
+      });
+      effect(() => {
+        app.innerHTML = `<div>${fullName.value}</div>`;
+      });
+
+      setTimeout(() => {
+        state.firstName = "朱";
+      }, 1000);
+    </script>
+  </body>
+</html>

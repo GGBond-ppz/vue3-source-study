@@ -1,5 +1,7 @@
 export let activeEffect = undefined;
 
+export const ITERATE_KEY: unique symbol = Symbol("Object iterate");
+
 function cleanupEffect(effect) {
   const { deps } = effect;
   for (let i = 0; i < deps.length; i++) {
@@ -8,7 +10,7 @@ function cleanupEffect(effect) {
   effect.deps.length = 0;
 }
 
-class ReactiveEffect {
+export class ReactiveEffect {
   public deps = []; // 记录effect依赖了哪些属性
   public parent = null; // parent记录外层effect的实例，effect可能会有嵌套
   public active = true; // 这个effect默认是激活状态
@@ -77,10 +79,16 @@ export function track(target, type, key) {
   if (!dep) {
     depsMap.set(key, (dep = new Set()));
   }
-  let shouldTrack = !dep.has(activeEffect);
-  if (shouldTrack) {
-    dep.add(activeEffect); // 属性记录effect
-    activeEffect.deps.push(dep); // effect记录属性，稍后清理的时候会用到
+  trackEffects(dep);
+}
+
+export function trackEffects(dep) {
+  if (activeEffect) {
+    let shouldTrack = !dep.has(activeEffect);
+    if (shouldTrack) {
+      dep.add(activeEffect); // 属性记录effect
+      activeEffect.deps.push(dep); // effect记录属性，稍后清理的时候会用到
+    }
   }
 }
 
@@ -96,22 +104,28 @@ export function trigger(target, type, key, value, oldValue) {
   const depsMap = targetMap.get(target);
   // 触发的值不在模板中使用直接返回
   if (!depsMap) return;
-
+  if (type === "add") {
+    key = ITERATE_KEY;
+  }
   let effects = depsMap.get(key);
   // 永远再执行前，拷贝一份来执行，不要关联引用
   if (effects) {
-    effects = new Set(effects);
-    effects &&
-      effects.forEach((effect) => {
-        // 如果在执行当前effect中又修改了依赖的属性，会无线循环执行当前effect
-        // 判断一下如果当前effect重复调用就不执行
-        if (effect !== activeEffect) {
-          if (effect.scheduler) {
-            effect.scheduler();
-          } else {
-            effect.run();
-          }
-        }
-      });
+    triggerEffects(effects);
   }
+}
+
+export function triggerEffects(effects) {
+  effects = new Set(effects);
+  effects &&
+    effects.forEach((effect) => {
+      // 如果在执行当前effect中又修改了依赖的属性，会无线循环执行当前effect
+      // 判断一下如果当前effect重复调用就不执行
+      if (effect !== activeEffect) {
+        if (effect.scheduler) {
+          effect.scheduler();
+        } else {
+          effect.run();
+        }
+      }
+    });
 }
