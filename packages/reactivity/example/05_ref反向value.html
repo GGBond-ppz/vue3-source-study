@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/vue/dist/vue.global.js"></script> -->
+    <script src="../dist/reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      // const { watch, reactive } = Vue;
+      const { ref, effect, proxyRefs } = VueReactivity;
+      let name = ref("zh");
+      let age = ref("18");
+      let person = proxyRefs({ name, age });
+      // 在模板中取值会自动去掉ref不需要.value
+      effect(() => {
+        app.innerHTML = person.name + person.age;
+      });
+    </script>
+  </body>
+</html>

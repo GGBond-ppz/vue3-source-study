@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/vue/dist/vue.global.js"></script> -->
+    <script src="../dist/reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      // const { watch, reactive } = Vue;
+      const { ref, effect, reactive, toRefs } = VueReactivity;
+      const person = reactive({ name: "zh", age: 18, address: { num: 10 } });
+
+      const { name, age, address } = toRefs(person);
+      effect(() => {
+        app.innerHTML = `${name.value}今年${age.value}岁了, ${address.value.num}`;
+      });
+
+      setTimeout(() => {
+        person.age = 25;
+        person.address.num = 25;
+      }, 1000);
+    </script>
+  </body>
+</html>
