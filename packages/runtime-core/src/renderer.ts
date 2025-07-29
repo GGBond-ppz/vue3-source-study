@@ -1,6 +1,8 @@
 import { isString, ShapeFlags } from "@my-vue/shared";
 import { createVNode, Fragment, isSameVnode, Text } from "./vnode";
 import { getSequence } from "./sequence";
+import { reactive, ReactiveEffect } from "@my-vue/reactivity";
+import { queueJob } from "./scheduler";
 
 export function createRenderer(renderOptions) {
   let {
@@ -238,7 +240,7 @@ export function createRenderer(renderOptions) {
   };
 
   const processElement = (n1, n2, container, anchor) => {
-    if (n1 === null) {
+    if (n1 == null) {
       // 初次渲染
       mountElement(n2, container, anchor);
     } else {
@@ -248,10 +250,54 @@ export function createRenderer(renderOptions) {
   };
 
   const processFragment = (n1, n2, container) => {
-    if (!n1) {
+    if (n1 == null) {
       mountChildren(n2.children, container);
     } else {
       patchChildren(n1, n2, container);
+    }
+  };
+
+  const mountComponent = (vnode, container, anchor) => {
+    let { data, render } = vnode.type; // 用户写的内容
+    const state = reactive(data()); // pinia源码就是reactive({})作为组件的状态
+    const instance = {
+      state,
+      vnode, // vue2的源码中组件的虚拟节点叫$vnode, 渲染的内容叫_vnode
+      subTree: null, // 渲染的组件内容
+      isMounted: false,
+      update: null,
+    };
+
+    const componentUpdateFn = () => {
+      // 区分是初始化还是更新
+      if (!instance.isMounted) {
+        // 初始化
+        const subTree = render.call(state);
+        patch(null, subTree, container, anchor); // 创建了subTree的真实节点并插入
+        instance.subTree = subTree;
+        instance.isMounted = true;
+      } else {
+        // 组件内部更新
+        const subTree = render.call(state);
+        patch(instance.subTree, subTree, container, anchor);
+        instance.subTree = subTree;
+      }
+    };
+
+    const effect = new ReactiveEffect(componentUpdateFn, () =>
+      queueJob(instance.update)
+    );
+
+    let update = (instance.update = effect.run.bind(effect)); // 调用effect.run可以让组件强制重新渲染
+    update();
+  };
+
+  // 统一处理组件
+  const processComponent = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      mountComponent(n2, container, anchor);
+    } else {
+      // mountComponent();
     }
   };
 
@@ -275,8 +321,10 @@ export function createRenderer(renderOptions) {
         processFragment(n1, n2, container);
         break;
       default:
-        if (shapeFlag && ShapeFlags.ELEMENT) {
+        if (shapeFlag & ShapeFlags.ELEMENT) {
           processElement(n1, n2, container, anchor);
+        } else if (shapeFlag & ShapeFlags.COMPONENT) {
+          processComponent(n1, n2, container, anchor);
         }
     }
   };

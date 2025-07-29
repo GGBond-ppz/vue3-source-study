@@ -19,6 +19,9 @@
           return { name: "zh", age: 25 };
         },
         render() {
+          setTimeout(() => {
+            this.age++;
+          }, 1000);
           // render函数需要返回虚拟节点，最终渲染的就是返回的虚拟节点
           return h("p", `${this.name}今年${this.age}岁了`);
         },
