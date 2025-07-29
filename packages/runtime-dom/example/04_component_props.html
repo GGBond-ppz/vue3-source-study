@@ -15,19 +15,23 @@
 
       // vue3兼容vue2的写法，简单的可以采用optionApi，复杂的采用compositionApi
       const VueComponent = {
+        props: {
+          address: String, // 校验属性类型
+        },
         data() {
           return { name: "zh", age: 25 };
         },
         render() {
-          // setTimeout(() => {
-          //   this.age++;
-          // }, 1000);
           // render函数需要返回虚拟节点，最终渲染的就是返回的虚拟节点
-          return h("p", `${this.name}今年${this.age}岁了`);
+          console.log(this);
+          return h(
+            "p",
+            `name:${this.name} address:${this.address} attrs: ${this.$attrs.a}`
+          );
         },
       };
 
-      render(h(VueComponent), app);
+      render(h(VueComponent, { address: "深圳", a: 1, b: 2 }), app);
     </script>
   </body>
 </html>

@@ -1,8 +1,9 @@
-import { isString, ShapeFlags } from "@my-vue/shared";
+import { hasOwn, isString, ShapeFlags } from "@my-vue/shared";
 import { createVNode, Fragment, isSameVnode, Text } from "./vnode";
 import { getSequence } from "./sequence";
 import { reactive, ReactiveEffect } from "@my-vue/reactivity";
 import { queueJob } from "./scheduler";
+import { initProps } from "./componentProps";
 
 export function createRenderer(renderOptions) {
   let {
@@ -257,8 +258,17 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  const publicPropertyMap = {
+    $attrs: (i) => i.attrs,
+  };
+
   const mountComponent = (vnode, container, anchor) => {
-    let { data, render } = vnode.type; // 用户写的内容
+    // 1. 创建一个组件实例
+
+    // 2. 初始化组件数据
+
+    // 3. 创建effect
+    let { data = () => {}, render, props: propsOptions = {} } = vnode.type; // 用户写的内容
     const state = reactive(data()); // pinia源码就是reactive({})作为组件的状态
     const instance = {
       state,
@@ -266,19 +276,49 @@ export function createRenderer(renderOptions) {
       subTree: null, // 渲染的组件内容
       isMounted: false,
       update: null,
+      propsOptions,
+      props: {},
+      attrs: {},
+      proxy: null,
     };
 
+    initProps(instance, vnode.props);
+    instance.proxy = new Proxy(instance, {
+      get(target, key) {
+        const { state, props } = target;
+        if (state && hasOwn(state, key)) {
+          return state[key];
+        } else if (props && hasOwn(props, key)) {
+          return props[key];
+        }
+        let getter = publicPropertyMap[key];
+        if (getter) {
+          return getter(target);
+        }
+      },
+      set(target, key, value) {
+        const { state, props } = target;
+        if (state && hasOwn(state, key)) {
+          state[key] = value;
+          return true;
+        } else if (props && hasOwn(props, key)) {
+          console.warn("attempting to mutate prop " + (key as string));
+          return false;
+        }
+        return true;
+      },
+    });
     const componentUpdateFn = () => {
       // 区分是初始化还是更新
       if (!instance.isMounted) {
         // 初始化
-        const subTree = render.call(state);
+        const subTree = render.call(instance.proxy);
         patch(null, subTree, container, anchor); // 创建了subTree的真实节点并插入
         instance.subTree = subTree;
         instance.isMounted = true;
       } else {
         // 组件内部更新
-        const subTree = render.call(state);
+        const subTree = render.call(instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
       }

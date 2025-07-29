@@ -17,10 +17,8 @@ export const isFunction = (value) => {
 export const isArray = Array.isArray;
 export const assign = Object.assign;
 
-export const hasOwn = (val, key) => {
-  return Object.prototype.hasOwnProperty.call(val, key);
-};
-
+const hasOwnProperty = Object.prototype.hasOwnProperty;
+export const hasOwn = (val, key) => hasOwnProperty.call(val, key);
 export enum ShapeFlags {
   ELEMENT = 1,
   FUNCTIONAL_COMPONENT = 1 << 1,

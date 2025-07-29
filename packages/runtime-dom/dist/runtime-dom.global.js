@@ -38,9 +38,8 @@ var VueRuntimeDOM = (() => {
     return typeof value === "string";
   };
   var isArray = Array.isArray;
-  var hasOwn = (val, key) => {
-    return Object.prototype.hasOwnProperty.call(val, key);
-  };
+  var hasOwnProperty = Object.prototype.hasOwnProperty;
+  var hasOwn = (val, key) => hasOwnProperty.call(val, key);
 
   // packages/runtime-core/src/vnode.ts
   var Text = Symbol("Text");
@@ -277,6 +276,25 @@ var VueRuntimeDOM = (() => {
     }
   }
 
+  // packages/runtime-core/src/componentProps.ts
+  function initProps(instance, rawProps) {
+    const props = {};
+    const attrs = {};
+    const options = instance.propsOptions || {};
+    if (rawProps) {
+      for (const key in rawProps) {
+        const value = rawProps[key];
+        if (hasOwn(options, key)) {
+          props[key] = value;
+        } else {
+          attrs[key] = value;
+        }
+      }
+      instance.props = reactive(props);
+      instance.attrs = attrs;
+    }
+  }
+
   // packages/runtime-core/src/renderer.ts
   function createRenderer(renderOptions2) {
     let {
@@ -472,24 +490,58 @@ var VueRuntimeDOM = (() => {
         patchChildren(n1, n2, container);
       }
     };
+    const publicPropertyMap = {
+      $attrs: (i) => i.attrs
+    };
     const mountComponent = (vnode, container, anchor) => {
-      let { data, render: render3 } = vnode.type;
+      let { data = () => {
+      }, render: render3, props: propsOptions = {} } = vnode.type;
       const state = reactive(data());
       const instance = {
         state,
         vnode,
         subTree: null,
         isMounted: false,
-        update: null
+        update: null,
+        propsOptions,
+        props: {},
+        attrs: {},
+        proxy: null
       };
+      initProps(instance, vnode.props);
+      instance.proxy = new Proxy(instance, {
+        get(target, key) {
+          const { state: state2, props } = target;
+          if (state2 && hasOwn(state2, key)) {
+            return state2[key];
+          } else if (props && hasOwn(props, key)) {
+            return props[key];
+          }
+          let getter = publicPropertyMap[key];
+          if (getter) {
+            return getter(target);
+          }
+        },
+        set(target, key, value) {
+          const { state: state2, props } = target;
+          if (state2 && hasOwn(state2, key)) {
+            state2[key] = value;
+            return true;
+          } else if (props && hasOwn(props, key)) {
+            console.warn("attempting to mutate prop " + key);
+            return false;
+          }
+          return true;
+        }
+      });
       const componentUpdateFn = () => {
         if (!instance.isMounted) {
-          const subTree = render3.call(state);
+          const subTree = render3.call(instance.proxy);
           patch(null, subTree, container, anchor);
           instance.subTree = subTree;
           instance.isMounted = true;
         } else {
-          const subTree = render3.call(state);
+          const subTree = render3.call(instance.proxy);
           patch(instance.subTree, subTree, container, anchor);
           instance.subTree = subTree;
         }
