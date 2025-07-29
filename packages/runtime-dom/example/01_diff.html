@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="../dist/runtime-dom.global.js"></script>
+
+    <script>
+      let { createRenderer, h, render, Text } = VueRuntimeDOM;
+      // console.log(createRenderer, h, render);
+      //   let renderer = createRenderer({
+      //     createElement(element) {
+      //       return document.createElement(element);
+      //     },
+      //     setElementText(el, text) {
+      //       el.innerHTML = text;
+      //     },
+      //     insert(el, container) {
+      //       container.appendChild(el);
+      //     },
+      //     patchProp(el, key, prevValue, nextValue) {
+      //       console.log(el, key, prevValue, nextValue);
+      //     },
+      //   });
+
+      render(
+        h("h1", { style: { color: "red", fontSize: "40px" } }, [
+          h("li", { key: "a", style: { color: "yellow" } }, "a"),
+          h("li", { key: "b" }, "b"),
+          h("li", { key: "c" }, "c"),
+          h("li", { key: "d" }, "d"),
+          h("li", { key: "e" }, "e"),
+          h("li", { key: "f" }, "f"),
+          h("li", { key: "g" }, "g"),
+        ]),
+        app
+      );
+
+      setTimeout(() => {
+        render(
+          h("h1", { style: { color: "red", fontSize: "40px" } }, [
+            h("li", { key: "a" }, "a"),
+            h("li", { key: "b" }, "b"),
+            h("li", { key: "e" }, "e"),
+            h("li", { key: "c" }, "c"),
+            h("li", { key: "d" }, "d"),
+            h("li", { key: "h" }, "h"),
+            h("li", { key: "f" }, "f"),
+            h("li", { key: "g" }, "g"),
+          ]),
+          app
+        );
+      }, 1000);
+    </script>
+  </body>
+</html>

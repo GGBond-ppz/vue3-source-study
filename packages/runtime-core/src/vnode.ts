@@ -1,9 +1,16 @@
 // type props children
 
 import { isArray, isString, ShapeFlags } from "@my-vue/shared";
-
+export const Text = Symbol("Text");
+export const Fragment = Symbol("Fragment");
 export function isVnode(value) {
   return !!(value && value.__v_isVnode);
+}
+
+// 判断两个虚拟节点是否是相同节点
+// 规则：1.标签名是否一致 2.key是否一致
+export function isSameVnode(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key;
 }
 
 // 虚拟节点有很多：组件的、元素的、文本的
