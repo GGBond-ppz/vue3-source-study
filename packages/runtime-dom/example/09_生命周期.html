@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="../dist/runtime-dom.global.js"></script>
+
+    <script>
+      let {
+        createRenderer,
+        h,
+        render,
+        Text,
+        Fragment,
+        ref,
+        onBeforeMount,
+        onMounted,
+        onBeforeUpdate,
+        onUpdated,
+        toRefs,
+        reactive,
+        computed,
+        getCurrentInstance,
+      } = VueRuntimeDOM;
+
+      const useCounter = () => {
+        const state = reactive({ count: 1 });
+        const handleClick = () => {
+          state.count++;
+        };
+
+        const doubleCount = computed(() => {
+          return state.count * 2;
+        });
+
+        onBeforeMount(() => {
+          let currentInstance = getCurrentInstance();
+          console.log("onBeforeMount", currentInstance);
+        });
+
+        onMounted(() => {
+          console.log("onMounted");
+        });
+
+        onBeforeUpdate(() => {
+          console.log("onBeforeUpdate");
+        });
+
+        onUpdated(() => {
+          console.log("onUpdated");
+        });
+        return {
+          state,
+          handleClick,
+          doubleCount,
+        };
+      };
+
+      const VueComponent = {
+        setup() {
+          const { state: counter, handleClick, doubleCount } = useCounter();
+          const a = ref("1");
+          return {
+            ...toRefs(counter),
+            handleClick,
+            doubleCount,
+            a,
+          };
+        },
+        render() {
+          return h(
+            "p",
+            { onClick: this.handleClick },
+            this.count + ":" + this.doubleCount
+          );
+        },
+      };
+
+      // children如果是对象说明是组件的插槽
+      render(h(VueComponent), app);
+    </script>
+  </body>
+</html>

@@ -33,6 +33,7 @@ export function ref(value) {
 }
 
 class ObjectRefImpl {
+  public __v_isRef = true;
   constructor(public object, public key) {}
 
   get value() {

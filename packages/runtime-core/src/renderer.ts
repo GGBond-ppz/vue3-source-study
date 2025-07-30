@@ -1,4 +1,4 @@
-import { isNumber, isString, ShapeFlags } from "@my-vue/shared";
+import { invokeArrayFns, isNumber, isString, ShapeFlags } from "@my-vue/shared";
 import { createVNode, Fragment, isSameVnode, Text } from "./vnode";
 import { getSequence } from "./sequence";
 import { ReactiveEffect } from "@my-vue/reactivity";
@@ -287,14 +287,23 @@ export function createRenderer(renderOptions) {
       // 区分是初始化还是更新
       if (!instance.isMounted) {
         // 初始化
+        let { bm, m } = instance;
+        if (bm) {
+          invokeArrayFns(bm);
+        }
         const subTree = render.call(instance.proxy);
         patch(null, subTree, container, anchor); // 创建了subTree的真实节点并插入
+        if (m) {
+          invokeArrayFns(m);
+        }
         instance.subTree = subTree;
         instance.isMounted = true;
       } else {
         // 组件内部更新
-
-        let { next } = instance;
+        let { next, bu, u } = instance;
+        if (bu) {
+          invokeArrayFns(bu);
+        }
         if (next) {
           // 更新前拿到最新的属性来进行更新
           updateComponentPreRender(instance, next);
@@ -302,6 +311,9 @@ export function createRenderer(renderOptions) {
         const subTree = render.call(instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
+        if (u) {
+          invokeArrayFns(u);
+        }
       }
     };
 
