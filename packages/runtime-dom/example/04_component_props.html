@@ -23,7 +23,6 @@
         },
         render() {
           // render函数需要返回虚拟节点，最终渲染的就是返回的虚拟节点
-          console.log(this);
           return h(
             "p",
             `name:${this.name} address:${this.address} attrs: ${this.$attrs.a}`

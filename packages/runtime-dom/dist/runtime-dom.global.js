@@ -37,6 +37,9 @@ var VueRuntimeDOM = (() => {
   var isString = (value) => {
     return typeof value === "string";
   };
+  var isFunction = (value) => {
+    return typeof value === "function";
+  };
   var isArray = Array.isArray;
   var hasOwnProperty = Object.prototype.hasOwnProperty;
   var hasOwn = (val, key) => hasOwnProperty.call(val, key);
@@ -295,6 +298,63 @@ var VueRuntimeDOM = (() => {
     }
   }
 
+  // packages/runtime-core/src/component.ts
+  function createComponentInstence(vnode) {
+    const instance = {
+      data: null,
+      vnode,
+      subTree: null,
+      isMounted: false,
+      update: null,
+      propsOptions: vnode.type.props,
+      props: {},
+      attrs: {},
+      proxy: null,
+      render: null
+    };
+    return instance;
+  }
+  var publicPropertyMap = {
+    $attrs: (i) => i.attrs
+  };
+  var publicInstanceProxy = {
+    get(target, key) {
+      const { data, props } = target;
+      if (data && hasOwn(data, key)) {
+        return data[key];
+      } else if (props && hasOwn(props, key)) {
+        return props[key];
+      }
+      let getter = publicPropertyMap[key];
+      if (getter) {
+        return getter(target);
+      }
+    },
+    set(target, key, value) {
+      const { data, props } = target;
+      if (data && hasOwn(data, key)) {
+        data[key] = value;
+        return true;
+      } else if (props && hasOwn(props, key)) {
+        console.warn("attempting to mutate prop " + key);
+        return false;
+      }
+      return true;
+    }
+  };
+  function setupComponent(instance) {
+    let { props, type } = instance.vnode;
+    initProps(instance, props);
+    instance.proxy = new Proxy(instance, publicInstanceProxy);
+    let data = type.data;
+    if (data) {
+      if (!isFunction(data))
+        console.warn("data option must be a function");
+      instance.data = reactive(data.call(instance.proxy));
+    }
+    instance.render = type.render;
+  }
+
   // packages/runtime-core/src/renderer.ts
   function createRenderer(renderOptions2) {
     let {
@@ -490,50 +550,8 @@ var VueRuntimeDOM = (() => {
         patchChildren(n1, n2, container);
       }
     };
-    const publicPropertyMap = {
-      $attrs: (i) => i.attrs
-    };
-    const mountComponent = (vnode, container, anchor) => {
-      let { data = () => {
-      }, render: render3, props: propsOptions = {} } = vnode.type;
-      const state = reactive(data());
-      const instance = {
-        state,
-        vnode,
-        subTree: null,
-        isMounted: false,
-        update: null,
-        propsOptions,
-        props: {},
-        attrs: {},
-        proxy: null
-      };
-      initProps(instance, vnode.props);
-      instance.proxy = new Proxy(instance, {
-        get(target, key) {
-          const { state: state2, props } = target;
-          if (state2 && hasOwn(state2, key)) {
-            return state2[key];
-          } else if (props && hasOwn(props, key)) {
-            return props[key];
-          }
-          let getter = publicPropertyMap[key];
-          if (getter) {
-            return getter(target);
-          }
-        },
-        set(target, key, value) {
-          const { state: state2, props } = target;
-          if (state2 && hasOwn(state2, key)) {
-            state2[key] = value;
-            return true;
-          } else if (props && hasOwn(props, key)) {
-            console.warn("attempting to mutate prop " + key);
-            return false;
-          }
-          return true;
-        }
-      });
+    const setupRenderEffect = (instance, container, anchor) => {
+      const { render: render3 } = instance;
       const componentUpdateFn = () => {
         if (!instance.isMounted) {
           const subTree = render3.call(instance.proxy);
@@ -552,6 +570,11 @@ var VueRuntimeDOM = (() => {
       );
       let update = instance.update = effect.run.bind(effect);
       update();
+    };
+    const mountComponent = (vnode, container, anchor) => {
+      let instance = vnode.component = createComponentInstence(vnode);
+      setupComponent(instance);
+      setupRenderEffect(instance, container, anchor);
     };
     const processComponent = (n1, n2, container, anchor) => {
       if (n1 == null) {

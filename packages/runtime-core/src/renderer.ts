@@ -4,6 +4,7 @@ import { getSequence } from "./sequence";
 import { reactive, ReactiveEffect } from "@my-vue/reactivity";
 import { queueJob } from "./scheduler";
 import { initProps } from "./componentProps";
+import { createComponentInstence, setupComponent } from "./component";
 
 export function createRenderer(renderOptions) {
   let {
@@ -258,56 +259,8 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  const publicPropertyMap = {
-    $attrs: (i) => i.attrs,
-  };
-
-  const mountComponent = (vnode, container, anchor) => {
-    // 1. 创建一个组件实例
-
-    // 2. 初始化组件数据
-
-    // 3. 创建effect
-    let { data = () => {}, render, props: propsOptions = {} } = vnode.type; // 用户写的内容
-    const state = reactive(data()); // pinia源码就是reactive({})作为组件的状态
-    const instance = {
-      state,
-      vnode, // vue2的源码中组件的虚拟节点叫$vnode, 渲染的内容叫_vnode
-      subTree: null, // 渲染的组件内容
-      isMounted: false,
-      update: null,
-      propsOptions,
-      props: {},
-      attrs: {},
-      proxy: null,
-    };
-
-    initProps(instance, vnode.props);
-    instance.proxy = new Proxy(instance, {
-      get(target, key) {
-        const { state, props } = target;
-        if (state && hasOwn(state, key)) {
-          return state[key];
-        } else if (props && hasOwn(props, key)) {
-          return props[key];
-        }
-        let getter = publicPropertyMap[key];
-        if (getter) {
-          return getter(target);
-        }
-      },
-      set(target, key, value) {
-        const { state, props } = target;
-        if (state && hasOwn(state, key)) {
-          state[key] = value;
-          return true;
-        } else if (props && hasOwn(props, key)) {
-          console.warn("attempting to mutate prop " + (key as string));
-          return false;
-        }
-        return true;
-      },
-    });
+  const setupRenderEffect = (instance, container, anchor) => {
+    const { render } = instance;
     const componentUpdateFn = () => {
       // 区分是初始化还是更新
       if (!instance.isMounted) {
@@ -330,6 +283,15 @@ export function createRenderer(renderOptions) {
 
     let update = (instance.update = effect.run.bind(effect)); // 调用effect.run可以让组件强制重新渲染
     update();
+  };
+
+  const mountComponent = (vnode, container, anchor) => {
+    // 1. 创建一个组件实例
+    let instance = (vnode.component = createComponentInstence(vnode));
+    // 2. 初始化组件
+    setupComponent(instance);
+    // 3. 创建effect
+    setupRenderEffect(instance, container, anchor);
   };
 
   // 统一处理组件
