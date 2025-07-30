@@ -37,6 +37,8 @@ export function createVNode(type, props, children = null) {
     let childType = 0;
     if (isArray(children)) {
       childType = ShapeFlags.ARRAY_CHILDREN;
+    } else if (isObject(children)) {
+      childType = ShapeFlags.SLOTS_CHILDREN;
     } else {
       children = String(children);
       childType = ShapeFlags.TEXT_CHILDREN;

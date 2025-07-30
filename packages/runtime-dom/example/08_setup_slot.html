@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="../dist/runtime-dom.global.js"></script>
+
+    <script>
+      let { createRenderer, h, render, Text, Fragment, ref } = VueRuntimeDOM;
+
+      const VueComponent = {
+        props: {
+          a: Number,
+        },
+        setup(props, ctx) {
+          console.log(props, ctx);
+          return {};
+        },
+        render() {
+          return h(Fragment, [
+            h("div", this.$slots.header()),
+            h("div", this.$slots.main()),
+            h("div", this.$slots.footer()),
+          ]);
+        },
+      };
+
+      // children如果是对象说明是组件的插槽
+      render(
+        h(
+          VueComponent,
+          { a: 1, b: 2 },
+          {
+            header: () => h("p", "header"),
+            main: () => h("p", "main"),
+            footer: () => h("p", "footer"),
+          }
+        ),
+        app
+      );
+    </script>
+  </body>
+</html>

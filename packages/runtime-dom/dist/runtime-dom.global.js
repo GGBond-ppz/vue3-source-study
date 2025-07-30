@@ -86,6 +86,8 @@ var VueRuntimeDOM = (() => {
       let childType = 0;
       if (isArray(children)) {
         childType = 16 /* ARRAY_CHILDREN */;
+      } else if (isObject(children)) {
+        childType = 32 /* SLOTS_CHILDREN */;
       } else {
         children = String(children);
         childType = 8 /* TEXT_CHILDREN */;
@@ -518,12 +520,14 @@ var VueRuntimeDOM = (() => {
       attrs: {},
       proxy: null,
       render: null,
-      setupState: {}
+      setupState: {},
+      slots: {}
     };
     return instance;
   }
   var publicPropertyMap = {
-    $attrs: (i) => i.attrs
+    $attrs: (i) => i.attrs,
+    $slots: (i) => i.slots
   };
   var publicInstanceProxy = {
     get(target, key) {
@@ -553,9 +557,15 @@ var VueRuntimeDOM = (() => {
       return true;
     }
   };
+  function initSlots(instance, children) {
+    if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+      instance.slots = children;
+    }
+  }
   function setupComponent(instance) {
-    let { props, type } = instance.vnode;
+    let { props, type, children } = instance.vnode;
     initProps(instance, props);
+    initSlots(instance, children);
     instance.proxy = new Proxy(instance, publicInstanceProxy);
     let data = type.data;
     if (data) {
@@ -565,7 +575,15 @@ var VueRuntimeDOM = (() => {
     }
     let setup = type.setup;
     if (setup) {
-      const setupContext = {};
+      const setupContext = {
+        emit: (event, ...args) => {
+          const eventName = `on${event[0].toUpperCase() + event.slice(1)}`;
+          const handler = instance.vnode.props[eventName];
+          handler && handler(...args);
+        },
+        attrs: instance.attrs,
+        slots: instance.slots
+      };
       const setupResult = setup(instance.props, setupContext);
       if (isFunction(setupResult)) {
         instance.render = setupResult;
