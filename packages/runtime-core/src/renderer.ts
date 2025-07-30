@@ -1,10 +1,10 @@
-import { hasOwn, isString, ShapeFlags } from "@my-vue/shared";
+import { isNumber, isString, ShapeFlags } from "@my-vue/shared";
 import { createVNode, Fragment, isSameVnode, Text } from "./vnode";
 import { getSequence } from "./sequence";
-import { reactive, ReactiveEffect } from "@my-vue/reactivity";
+import { ReactiveEffect } from "@my-vue/reactivity";
 import { queueJob } from "./scheduler";
-import { initProps } from "./componentProps";
-import { createComponentInstence, setupComponent } from "./component";
+import { hasPropsChanged, updateProps } from "./componentProps";
+import { createComponentInstance, setupComponent } from "./component";
 
 export function createRenderer(renderOptions) {
   let {
@@ -19,14 +19,16 @@ export function createRenderer(renderOptions) {
     patchProp: hostPatchProp,
   } = renderOptions;
 
+  // 标准化
   const normalize = (children, i) => {
-    if (isString(children[i])) {
+    if (isString(children[i]) || isNumber(children[i])) {
       let vnode = createVNode(Text, null, children[i]);
       children[i] = vnode;
     }
     return children[i];
   };
 
+  // 挂载子节点
   const mountChildren = (children, container) => {
     for (let i = 0; i < children.length; i++) {
       let child = normalize(children, i);
@@ -34,6 +36,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  // 挂载元素
   const mountElement = (vnode, container, anchor) => {
     let { type, props, children, shapeFlag } = vnode;
     // 将真实元素挂载到虚拟节点上，用于后续复用节点比对
@@ -52,6 +55,7 @@ export function createRenderer(renderOptions) {
     hostInsert(el, container, anchor);
   };
 
+  // 处理文本
   const processText = (n1, n2, container) => {
     if (n1 === null) {
       hostInsert((n2.el = hostCreateText(n2.children)), container);
@@ -64,6 +68,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  // 比较参数
   const patchProps = (oldProps, newProps, el) => {
     for (const key in newProps) {
       if (key === "style") {
@@ -78,6 +83,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  // 卸载子节点
   const unmountChildren = (children) => {
     for (let i = 0; i < children.length; i++) {
       unmount(children[i]);
@@ -185,6 +191,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  // 比较子节点
   const patchChildren = (n1, n2, el) => {
     const c1 = n1.children;
     const c2 = n2.children;
@@ -228,6 +235,8 @@ export function createRenderer(renderOptions) {
       }
     }
   };
+
+  // 元素的比较
   const patchElement = (n1, n2) => {
     // 先复用节点，再比较属性，在比较儿子
     let el = (n2.el = n1.el);
@@ -241,6 +250,7 @@ export function createRenderer(renderOptions) {
     patchChildren(n1, n2, el);
   };
 
+  // 处理元素类型
   const processElement = (n1, n2, container, anchor) => {
     if (n1 == null) {
       // 初次渲染
@@ -251,6 +261,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  // 处理Fragment类型
   const processFragment = (n1, n2, container) => {
     if (n1 == null) {
       mountChildren(n2.children, container);
@@ -259,6 +270,14 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  const updateComponentPreRender = (instance, next) => {
+    instance.next = null;
+    instance.vnode = next;
+    updateProps(instance.props, next.props);
+    debugger;
+  };
+
+  // 挂载组件Effect
   const setupRenderEffect = (instance, container, anchor) => {
     const { render } = instance;
     const componentUpdateFn = () => {
@@ -271,6 +290,12 @@ export function createRenderer(renderOptions) {
         instance.isMounted = true;
       } else {
         // 组件内部更新
+
+        let { next } = instance;
+        if (next) {
+          // 更新前拿到最新的属性来进行更新
+          updateComponentPreRender(instance, next);
+        }
         const subTree = render.call(instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
@@ -285,13 +310,40 @@ export function createRenderer(renderOptions) {
     update();
   };
 
+  // 组件挂载
   const mountComponent = (vnode, container, anchor) => {
     // 1. 创建一个组件实例
-    let instance = (vnode.component = createComponentInstence(vnode));
+    let instance = (vnode.component = createComponentInstance(vnode));
     // 2. 初始化组件
     setupComponent(instance);
     // 3. 创建effect
     setupRenderEffect(instance, container, anchor);
+  };
+
+  const shouldUpdateComponent = (n1, n2) => {
+    const { props: prevProps, children: prevChildren } = n1;
+    const { props: nextProps, children: nextChildren } = n2;
+
+    if (prevProps === nextProps) return false;
+
+    if (prevChildren || nextChildren) {
+      return true;
+    }
+
+    return hasPropsChanged(prevProps, nextProps);
+  };
+
+  // 组件更新
+  const updateComponent = (n1, n2) => {
+    // 对于元素来说复用的是dom节点，对于组件复用的是组件实例
+    const instance = (n2.component = n1.component);
+
+    // 需要更新就强制调用组件的update方法
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2; // 将新的虚拟节点放到next属性上
+      instance.update();
+    }
+    // updateProps(instance, prevProps, nextProps);
   };
 
   // 统一处理组件
@@ -299,7 +351,7 @@ export function createRenderer(renderOptions) {
     if (n1 == null) {
       mountComponent(n2, container, anchor);
     } else {
-      // mountComponent();
+      updateComponent(n1, n2);
     }
   };
 

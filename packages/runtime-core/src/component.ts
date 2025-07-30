@@ -2,7 +2,7 @@ import { reactive } from "@my-vue/reactivity";
 import { initProps } from "./componentProps";
 import { hasOwn, isFunction } from "@my-vue/shared";
 
-export function createComponentInstence(vnode) {
+export function createComponentInstance(vnode) {
   const instance = {
     data: null,
     vnode, // vue2的源码中组件的虚拟节点叫$vnode, 渲染的内容叫_vnode
