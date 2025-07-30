@@ -246,6 +246,9 @@ export function createRenderer(renderOptions) {
     // 比较属性
     patchProps(oldProps, newProps, el);
 
+    for (let i = 0; i < n2.children.length; i++) {
+      normalize(n2.children, i);
+    }
     // 比较儿子
     patchChildren(n1, n2, el);
   };
