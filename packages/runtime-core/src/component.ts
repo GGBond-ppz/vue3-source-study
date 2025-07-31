@@ -95,7 +95,6 @@ export function setupComponent(instance) {
     if (isFunction(setupResult)) {
       instance.render = setupResult;
     } else if (isObject(setupResult)) {
-      debugger;
       instance.setupState = proxyRefs(setupResult);
     }
   }

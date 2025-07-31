@@ -1,4 +1,10 @@
-import { invokeArrayFns, isNumber, isString, ShapeFlags } from "@my-vue/shared";
+import {
+  invokeArrayFns,
+  isNumber,
+  isString,
+  PatchFlags,
+  ShapeFlags,
+} from "@my-vue/shared";
 import { createVNode, Fragment, isSameVnode, Text } from "./vnode";
 import { getSequence } from "./sequence";
 import { ReactiveEffect } from "@my-vue/reactivity";
@@ -236,21 +242,40 @@ export function createRenderer(renderOptions) {
     }
   };
 
+  const patchBlockChildren = (n1, n2) => {
+    for (let i = 0; i < n2.dynamicChildren.length; i++) {
+      patchElement(n1.dynamicChildren[i], n2.dynamicChildren[i]);
+    }
+  };
+
   // 元素的比较
   const patchElement = (n1, n2) => {
     // 先复用节点，再比较属性，在比较儿子
     let el = (n2.el = n1.el);
     let oldProps = n1.props || {};
     let newProps = n2.props || {};
-
-    // 比较属性
-    patchProps(oldProps, newProps, el);
-
     for (let i = 0; i < n2.children.length; i++) {
       normalize(n2.children, i);
     }
+
+    let { patchFlag } = n2;
+    if (patchFlag & PatchFlags.CLASS) {
+      if (oldProps.class !== newProps.class) {
+        hostPatchProp(el, "class", null, newProps.class);
+      }
+    } else {
+      // 比较属性
+      patchProps(oldProps, newProps, el);
+    }
+
     // 比较儿子
-    patchChildren(n1, n2, el);
+    if (n2.dynamicChildren) {
+      // 靶向更新
+      patchBlockChildren(n1, n2);
+    } else {
+      // 全量比较
+      patchChildren(n1, n2, el);
+    }
   };
 
   // 处理元素类型
@@ -291,7 +316,7 @@ export function createRenderer(renderOptions) {
         if (bm) {
           invokeArrayFns(bm);
         }
-        const subTree = render.call(instance.proxy);
+        const subTree = render.call(instance.proxy, instance.proxy);
         patch(null, subTree, container, anchor); // 创建了subTree的真实节点并插入
         if (m) {
           invokeArrayFns(m);
@@ -308,7 +333,7 @@ export function createRenderer(renderOptions) {
           // 更新前拿到最新的属性来进行更新
           updateComponentPreRender(instance, next);
         }
-        const subTree = render.call(instance.proxy);
+        const subTree = render.call(instance.proxy, instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
         if (u) {

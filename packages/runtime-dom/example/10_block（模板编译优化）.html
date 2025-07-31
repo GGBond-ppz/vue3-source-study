@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="../dist/runtime-dom.global.js"></script>
+
+    <script>
+      let {
+        createRenderer,
+        h,
+        render,
+        Text,
+        Fragment,
+        ref,
+        onBeforeMount,
+        onMounted,
+        onBeforeUpdate,
+        onUpdated,
+        toRefs,
+        reactive,
+        computed,
+        getCurrentInstance,
+        createElementVNode: _createElementVNode,
+        toDisplayString: _toDisplayString,
+        openBlock: _openBlock,
+        createElementBlock: _createElementBlock,
+      } = VueRuntimeDOM;
+
+      // block的作用是收集动态节点
+      const VueComponent = {
+        setup() {
+          const state = reactive({ name: "zh", clazz: "abc" });
+          setTimeout(() => {
+            state.name = "new";
+            state.clazz = "123";
+          }, 1000);
+          return { state };
+        },
+        render(_ctx) {
+          let vnode =
+            (_openBlock(),
+            _createElementBlock("div", null, [
+              _createElementVNode("h1", null, "Hello World"),
+              _createElementVNode(
+                "span",
+                {
+                  class: _ctx.state.clazz,
+                },
+                "123",
+                2 /* CLASS */
+              ),
+            ]));
+
+          console.log(vnode);
+          return vnode;
+        },
+      };
+
+      // children如果是对象说明是组件的插槽
+      render(h(VueComponent), app);
+
+      // vue3针对模板编译有多种优化
+      // patchFlag 标识动态节点
+      // block 收集节点，为不稳定结构也创建block节点，实现blockTree，可以做到靶向更新
+      // 静态提升（包括属性的提升和虚拟节点的提升，函数的缓存，与解析字符串）
+      // 写模板的性能会比直接写h函数更好一些
+    </script>
+  </body>
+</html>
