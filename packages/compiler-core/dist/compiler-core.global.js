@@ -37,6 +37,47 @@ var VueCompilerCore = (() => {
     compile: () => compile
   });
 
+  // packages/compiler-core/src/runtimeHelpers.ts
+  var TO_DISPLAY_STRING = Symbol("toDisplayString");
+  var CREATE_TEXT = Symbol("createTextVNode");
+  var CREATE_ELEMENT_VNODE = Symbol("createElementVNode");
+  var OPEN_BLOCK = Symbol("openBlock");
+  var CREATE_ELEMENT_BLOCK = Symbol("createElementBlock");
+  var FRAGMENT = Symbol("fragment");
+  var helperMap = {
+    [TO_DISPLAY_STRING]: "toDisplayString",
+    [CREATE_TEXT]: "createTextVNode",
+    [CREATE_ELEMENT_VNODE]: "createElementVNode",
+    [OPEN_BLOCK]: "openBlock",
+    [CREATE_ELEMENT_BLOCK]: "createElementBlock",
+    [FRAGMENT]: "fragment"
+  };
+
+  // packages/compiler-core/src/ast.ts
+  function createCallExpression(context, args) {
+    let callee = context.helper(CREATE_TEXT);
+    return {
+      callee,
+      type: 20 /* JS_CACHE_EXPRESSION */,
+      arguments: args
+    };
+  }
+  function createObjectExpression(properties) {
+    return {
+      type: 15 /* JS_OBJECT_EXPRESSION */,
+      properties
+    };
+  }
+  function createVNodeCall(context, vnodeTag, propsExpression, childrenNode) {
+    context.helper(CREATE_ELEMENT_VNODE);
+    return {
+      type: 13 /* VNODE_CALL */,
+      tag: vnodeTag,
+      props: propsExpression,
+      children: childrenNode
+    };
+  }
+
   // packages/compiler-core/src/parse.ts
   function createParserContext(template) {
     return {
@@ -245,9 +286,192 @@ var VueCompilerCore = (() => {
     return nodes.filter(Boolean);
   }
 
+  // packages/compiler-core/src/transforms/transformElement.ts
+  function transformElement(node, context) {
+    if (node.type === 1 /* ELEMENT */) {
+      return () => {
+        let vnodeTag = `"${node.tag}"`;
+        let properties = [];
+        let props = node.props;
+        for (let i = 0; i < props.length; i++) {
+          properties.push({
+            key: props[i].name,
+            value: props[i].value.content
+          });
+        }
+        const propsExpression = properties.length > 0 ? createObjectExpression(properties) : null;
+        let childrenNode = null;
+        if (node.children.length === 1) {
+          childrenNode = node.children[0];
+        } else if (node.children.length > 1) {
+          childrenNode = node.children;
+        }
+        node.codegenNode = createVNodeCall(
+          context,
+          vnodeTag,
+          propsExpression,
+          childrenNode
+        );
+      };
+    }
+  }
+
+  // packages/compiler-core/src/transforms/transformExpression.ts
+  function transformExpression(node, context) {
+    if (node.type === 5 /* INTERPOLATION */) {
+      let content = node.content.content;
+      node.content.content = `_ctx.${content}`;
+    }
+  }
+
+  // packages/shared/src/index.ts
+  var isArray = Array.isArray;
+
+  // packages/compiler-core/src/transforms/transformText.ts
+  function isText(node) {
+    return node.type === 5 /* INTERPOLATION */ || node.type === 2 /* TEXT */;
+  }
+  function transformText(node, context) {
+    if (node.type === 1 /* ELEMENT */ || node.type === 0 /* ROOT */) {
+      return () => {
+        let currentContainer = null;
+        let children = node.children;
+        let hasText = false;
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          hasText = true;
+          if (isText(child)) {
+            for (let j = i + 1; j < children.length; j++) {
+              const next = children[j];
+              if (isText(next)) {
+                if (!currentContainer) {
+                  currentContainer = children[i] = {
+                    type: 8 /* COMPOUND_EXPRESSION */,
+                    children: [child]
+                  };
+                }
+                currentContainer.children.push(`+`, next);
+                children.splice(j, 1);
+                j--;
+              } else {
+                currentContainer = null;
+                break;
+              }
+            }
+          }
+        }
+        if (hasText && children.length === 1) {
+          return;
+        }
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const callArgs = [];
+          if (isText(child) || child.type === 8 /* COMPOUND_EXPRESSION */) {
+            callArgs.push(child);
+            if (node.type !== 2 /* TEXT */) {
+              callArgs.push(1 /* TEXT */);
+            }
+            children[i] = {
+              type: 12 /* TEXT_CALL */,
+              content: child,
+              codegenNode: createCallExpression(context, callArgs)
+            };
+          }
+        }
+      };
+    }
+  }
+
+  // packages/compiler-core/src/transform.ts
+  function createTransformContext(root) {
+    const context = {
+      currentNode: root,
+      parent: null,
+      helpers: /* @__PURE__ */ new Map(),
+      helper(name) {
+        const count = context.helpers.get(name) || 0;
+        context.helpers.set(name, count + 1);
+        return name;
+      },
+      removeHelper(name) {
+        const count = context.helpers.get(name);
+        if (count) {
+          const currentCount = count - 1;
+          if (!currentCount) {
+            context.helpers.delete(name);
+          } else {
+            context.helpers.set(name, currentCount);
+          }
+        }
+      },
+      nodeTransforms: [transformElement, transformText, transformExpression]
+    };
+    return context;
+  }
+  function traverse(node, context) {
+    context.currentNode = node;
+    const transforms = context.nodeTransforms;
+    const exitsFns = [];
+    for (let i2 = 0; i2 < transforms.length; i2++) {
+      let onExit = transforms[i2](node, context);
+      if (onExit)
+        exitsFns.push(onExit);
+      if (!context.currentNode)
+        return;
+    }
+    switch (node.type) {
+      case 5 /* INTERPOLATION */:
+        context.helper(TO_DISPLAY_STRING);
+        break;
+      case 1 /* ELEMENT */:
+      case 0 /* ROOT */:
+        for (let i2 = 0; i2 < node.children.length; i2++) {
+          context.parent = node;
+          traverse(node.children[i2], context);
+        }
+    }
+    context.currentNode = node;
+    let i = exitsFns.length;
+    while (i--) {
+      exitsFns[i]();
+    }
+  }
+  function createRootCodegen(ast, context) {
+    let { children } = ast;
+    if (children.length === 1) {
+      const child = children[0];
+      if (child.type === 1 /* ELEMENT */ && child.codegenNode) {
+        ast.codegenNode = child.codegenNode;
+        context.removeHelper(CREATE_ELEMENT_VNODE);
+        context.helper(OPEN_BLOCK);
+        context.helper(CREATE_ELEMENT_BLOCK);
+        ast.codegenNode.isBlock = true;
+      } else {
+        ast.codegenNode = child;
+      }
+    } else {
+      ast.codegenNode = createVNodeCall(
+        context,
+        context.helper(FRAGMENT),
+        null,
+        children
+      );
+      context.helper(OPEN_BLOCK);
+      context.helper(CREATE_ELEMENT_BLOCK);
+      ast.codegenNode.isBlock = true;
+    }
+  }
+  function transform(ast) {
+    const context = createTransformContext(ast);
+    traverse(ast, context);
+    createRootCodegen(ast, context);
+    ast.helpers = [...context.helpers.keys()];
+  }
+
   // packages/compiler-core/src/index.ts
   function compile(template) {
     const ast = parse(template);
+    transform(ast);
     return ast;
   }
   return __toCommonJS(src_exports);

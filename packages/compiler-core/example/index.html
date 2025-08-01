@@ -11,7 +11,7 @@
     <script>
       const { compile } = VueCompilerCore;
 
-      let template = `<div a="1">   </div>  123  `;
+      let template = `<div a="1" b="2">{{aaa}} 123</div> <span></span>`;
 
       console.log(compile(template));
     </script>

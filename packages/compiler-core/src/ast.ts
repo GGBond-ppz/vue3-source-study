@@ -1,3 +1,5 @@
+import { CREATE_ELEMENT_VNODE, CREATE_TEXT } from "./runtimeHelpers";
+
 export enum NodeTypes {
   ROOT, // 根节点
   ELEMENT, // 元素
@@ -30,4 +32,35 @@ export enum NodeTypes {
   JS_ASSIGNMENT_EXPRESSION,
   JS_SEQUENCE_EXPRESSION,
   JS_RETURN_STATEMENT,
+}
+
+export function createCallExpression(context, args) {
+  let callee = context.helper(CREATE_TEXT);
+  return {
+    callee,
+    type: NodeTypes.JS_CACHE_EXPRESSION,
+    arguments: args,
+  };
+}
+
+export function createObjectExpression(properties) {
+  return {
+    type: NodeTypes.JS_OBJECT_EXPRESSION,
+    properties,
+  };
+}
+
+export function createVNodeCall(
+  context,
+  vnodeTag,
+  propsExpression,
+  childrenNode
+) {
+  context.helper(CREATE_ELEMENT_VNODE);
+  return {
+    type: NodeTypes.VNODE_CALL,
+    tag: vnodeTag,
+    props: propsExpression,
+    children: childrenNode,
+  };
 }
