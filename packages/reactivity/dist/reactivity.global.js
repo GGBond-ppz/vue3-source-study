@@ -20,6 +20,9 @@ var VueReactivity = (() => {
   // packages/reactivity/src/index.ts
   var src_exports = {};
   __export(src_exports, {
+    ITERATE_KEY: () => ITERATE_KEY,
+    ReactiveEffect: () => ReactiveEffect,
+    activeEffect: () => activeEffect,
     computed: () => computed,
     effect: () => effect,
     proxyRefs: () => proxyRefs,
@@ -27,7 +30,12 @@ var VueReactivity = (() => {
     ref: () => ref,
     toRef: () => toRef,
     toRefs: () => toRefs,
-    watch: () => watch
+    track: () => track,
+    trackEffects: () => trackEffects,
+    trigger: () => trigger,
+    triggerEffects: () => triggerEffects,
+    watch: () => watch,
+    watchEffect: () => watchEffect
   });
 
   // packages/reactivity/src/effect.ts
@@ -131,9 +139,8 @@ var VueReactivity = (() => {
     return typeof value === "function";
   };
   var isArray = Array.isArray;
-  var hasOwn = (val, key) => {
-    return Object.prototype.hasOwnProperty.call(val, key);
-  };
+  var hasOwnProperty = Object.prototype.hasOwnProperty;
+  var hasOwn = (val, key) => hasOwnProperty.call(val, key);
 
   // packages/reactivity/src/baseHandler.ts
   var mutableHandler = {
@@ -275,6 +282,16 @@ var VueReactivity = (() => {
     oldValue = effect2.run();
   }
 
+  // packages/reactivity/src/watchEffect.ts
+  function watchEffect(cb, options = {}) {
+    if (!isFunction(cb)) {
+      console.warn("watchEffect param is must be a function");
+      return;
+    }
+    const effect2 = new ReactiveEffect(cb);
+    effect2.run();
+  }
+
   // packages/reactivity/src/ref.ts
   function toReactive(value) {
     return isObject(value) ? reactive(value) : value;
@@ -305,6 +322,7 @@ var VueReactivity = (() => {
     constructor(object, key) {
       this.object = object;
       this.key = key;
+      this.__v_isRef = true;
     }
     get value() {
       return this.object[this.key];

@@ -1,3 +1,4 @@
+import { generate } from "./generate";
 import { parse } from "./parse";
 import { transform } from "./transform";
 
@@ -9,8 +10,6 @@ export function compile(template) {
   // 这里转化，要进行收集所需的方法 createElementVnode toDisplayString...
   // codegen 为了生成代码的时候更方便，在转化过程中会生成这样一个属性
   transform(ast);
-
-  return ast;
   // // 生成代码
-  // return generate(ast)
+  return generate(ast);
 }

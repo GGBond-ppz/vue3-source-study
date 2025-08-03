@@ -83,6 +83,7 @@ function createRootCodegen(ast, context) {
       ast.codegenNode = child;
     }
   } else {
+    if (children.length === 0) return;
     ast.codegenNode = createVNodeCall(
       context,
       context.helper(FRAGMENT),

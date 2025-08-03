@@ -398,7 +398,7 @@ export function createRenderer(renderOptions) {
   // 核心patch方法
   const patch = (n1, n2, container, anchor = null) => {
     // TODO n2可能是个字符串
-    if (n1 === n2) return;
+    if (n1 == n2) return;
 
     if (n1 && !isSameVnode(n1, n2)) {
       unmount(n1); // 删除老的

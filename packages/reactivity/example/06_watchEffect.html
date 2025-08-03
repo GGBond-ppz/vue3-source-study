@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- <script src="../../../node_modules/vue/dist/vue.global.js"></script> -->
+    <script src="../dist/reactivity.global.js"></script>
+    <div id="app"></div>
+    <script>
+      // const { watch, reactive } = Vue;
+      const { watch, reactive, watchEffect } = VueReactivity;
+      let state = reactive({ name: "a", address: { num: 10 } });
+      watchEffect(() => {
+        console.log(state.name);
+      });
+
+      setTimeout(() => {
+        state.name = "b";
+        state.name = "c";
+        state.name = "d";
+        state.name = "e";
+        state.name = "f";
+      }, 1000);
+    </script>
+  </body>
+</html>

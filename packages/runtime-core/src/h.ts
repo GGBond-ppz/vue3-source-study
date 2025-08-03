@@ -13,7 +13,7 @@ import { isArray, isObject } from "@my-vue/shared";
  * h('div',[h('span),h('span)])
  *
  */
-export function h(type, propsOrChildren, children) {
+export function h(type, propsOrChildren?, children?) {
   const l = arguments.length;
   // h('div','hello')
   // h('div',{style:{'color': 'red'}})
