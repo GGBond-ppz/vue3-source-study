@@ -12,7 +12,6 @@ export function provide(key, value) {
   let provides = currentInstance.provides;
 
   // 第一次provides相同，后续使用不进行创建
-  debugger;
   if (parentProvide === provides) {
     // 自己的provides不能定义在父亲上，否则导致儿子提供的属性，父亲也能用
     // Object.create(provides) 静态方法以一个现有对象作为原型，创建一个新对象。

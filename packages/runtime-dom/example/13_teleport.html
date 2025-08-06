@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="root"></div>
+    <div id="root2"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="../dist/runtime-dom.global.js"></script>
+
+    <script>
+      let {
+        createRenderer,
+        h,
+        render,
+        Text,
+        Fragment,
+        ref,
+        onBeforeMount,
+        onMounted,
+        onBeforeUpdate,
+        onUpdated,
+        toRefs,
+        reactive,
+        computed,
+        createApp,
+        provide,
+        inject,
+        getCurrentInstance,
+        Teleport,
+      } = VueRuntimeDOM;
+
+      // block的作用是收集动态节点
+      const VueComponent = {
+        setup() {
+          const flag = ref(true);
+          function handleClick() {
+            flag.value = !flag.value;
+          }
+          return { flag, handleClick };
+        },
+        render() {
+          return h(
+            "button",
+            { onClick: this.handleClick },
+            this.flag
+              ? h(Teleport, { to: "#root" }, [
+                  h(Text, 123),
+                  h(Text, 456),
+                  h(Text, 789),
+                ])
+              : h(Teleport, { to: "#root2" }, [
+                  h(Text, 987),
+                  h(Text, 654),
+                  h(Text, 321),
+                ])
+          );
+        },
+      };
+
+      render(h(VueComponent), app);
+    </script>
+  </body>
+</html>

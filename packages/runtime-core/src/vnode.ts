@@ -1,5 +1,6 @@
 // type props children
 
+import { isTeleport } from "./components/Teleport";
 import { isArray, isObject, isString, ShapeFlags } from "@my-vue/shared";
 export const Text = Symbol("Text");
 export const Fragment = Symbol("Fragment");
@@ -18,6 +19,8 @@ export function createVNode(type, props, children = null, patchFlag = 0) {
   // 组合方案 shapeFlag，我想知道一个元素中包含多个儿子还是一个儿子
   let shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
+    : isTeleport(type)
+    ? ShapeFlags.TELEPORT
     : isObject(type)
     ? ShapeFlags.STATEFUL_COMPONENT
     : 0;

@@ -425,6 +425,17 @@ export function createRenderer(renderOptions) {
           processElement(n1, n2, container, anchor, parentComponent);
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
           processComponent(n1, n2, container, anchor, parentComponent);
+        } else if (shapeFlag & ShapeFlags.TELEPORT) {
+          type.process(n1, n2, container, anchor, {
+            mountChildren,
+            patchChildren,
+            move(vnode, container) {
+              hostInsert(
+                vnode.component ? vnode.component.subTree.el : vnode.el,
+                container
+              );
+            },
+          });
         }
     }
   };
