@@ -1,3 +1,5 @@
+import { recordEffectScope } from "./effectScope";
+
 export let activeEffect = undefined;
 
 export const ITERATE_KEY: unique symbol = Symbol("Object iterate");
@@ -14,7 +16,9 @@ export class ReactiveEffect {
   public deps = []; // 记录effect依赖了哪些属性
   public parent = null; // parent记录外层effect的实例，effect可能会有嵌套
   public active = true; // 这个effect默认是激活状态
-  constructor(public fn, public scheduler?) {}
+  constructor(public fn, public scheduler?) {
+    recordEffectScope(this);
+  }
 
   // 执行effect
   run() {
