@@ -5,8 +5,10 @@ export let currentInstance = null;
 export const setCurrentInstance = (instance) => (currentInstance = instance);
 export const getCurrentInstance = () => currentInstance;
 
-export function createComponentInstance(vnode) {
+export function createComponentInstance(vnode, parent) {
   const instance = {
+    provides: parent ? parent.provides : Object.create(null),
+    parent,
     data: null,
     vnode, // vue2的源码中组件的虚拟节点叫$vnode, 渲染的内容叫_vnode
     subTree: null, // 渲染的组件内容
