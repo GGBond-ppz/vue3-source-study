@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <script src="../dist/runtime-dom.global.js"></script>
+
+    <script>
+      let {
+        createRenderer,
+        h,
+        render,
+        Text,
+        Fragment,
+        ref,
+        onBeforeMount,
+        onMounted,
+        onBeforeUpdate,
+        onUpdated,
+        toRefs,
+        reactive,
+        computed,
+        createApp,
+        provide,
+        inject,
+        getCurrentInstance,
+        Teleport,
+        defineAsyncComponent,
+      } = VueRuntimeDOM;
+
+      const My = {
+        render() {
+          return h("h1", "hello world");
+        },
+      };
+
+      const ErrorComponent = {
+        render() {
+          return h("h1", "Error");
+        },
+      };
+
+      const LoadingComponent = {
+        render() {
+          return h("h1", "loading");
+        },
+      };
+      let num = 0;
+      const asyncComponent = defineAsyncComponent({
+        loader: () => {
+          return new Promise((resolve, reject) => {
+            setTimeout(() => {
+              reject(My);
+            }, 3000);
+          });
+        },
+        timeout: 2000,
+        delay: 1000,
+        loadingComponent: LoadingComponent,
+        errorComponent: ErrorComponent,
+        onError(err, retry, fail) {
+          console.log("加载失败重试");
+          if (num >= 3) return;
+          retry();
+          num++;
+        },
+      });
+
+      render(h(asyncComponent), app);
+    </script>
+  </body>
+</html>

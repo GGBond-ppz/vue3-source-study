@@ -7,3 +7,5 @@ export * from "./apiLifecycle";
 export * from "./component";
 export * from "./apiInject";
 export { TeleportImpl as Teleport, isTeleport } from "./components/Teleport";
+
+export * from "./defineAsyncComponent";

@@ -50,6 +50,7 @@ var VueRuntimeDOM = (() => {
     createRenderer: () => createRenderer,
     createVNode: () => createVNode,
     currentInstance: () => currentInstance,
+    defineAsyncComponent: () => defineAsyncComponent,
     effect: () => effect,
     effectScope: () => effectScope,
     getCurrentInstance: () => getCurrentInstance,
@@ -1070,6 +1071,11 @@ var VueRuntimeDOM = (() => {
       }
     };
     const unmount = (vnode) => {
+      if (vnode.type === Fragment) {
+        return unmountChildren(vnode);
+      } else if (vnode.shapeFlag & 6 /* COMPONENT */) {
+        return unmount(vnode.component.subTree);
+      }
       hostRemove(vnode.el);
     };
     const render2 = (vnode, container) => {
@@ -1153,6 +1159,66 @@ var VueRuntimeDOM = (() => {
     } else if (arguments.length > 1) {
       return defaultValue;
     }
+  }
+
+  // packages/runtime-core/src/defineAsyncComponent.ts
+  function defineAsyncComponent(options) {
+    if (typeof options === "function") {
+      options = { loader: options };
+    }
+    return {
+      setup() {
+        const loaded = ref(false);
+        const error = ref(false);
+        const loading = ref(false);
+        const {
+          loader,
+          timeout,
+          errorComponent,
+          delay,
+          loadingComponent,
+          onError
+        } = options;
+        if (delay) {
+          setTimeout(() => {
+            loading.value = true;
+          }, delay);
+        }
+        let Comp = null;
+        function load() {
+          return loader().catch((err) => {
+            if (onError) {
+              return new Promise((resolve, reject) => {
+                const retry = () => resolve(load());
+                const fail = () => reject(err);
+                onError(err, retry, fail);
+              });
+            }
+          });
+        }
+        load().then((c) => {
+          Comp = c;
+          loaded.value = true;
+        }).finally(() => {
+          loading.value = false;
+        });
+        setTimeout(() => {
+          error.value = true;
+        }, timeout);
+        return () => {
+          if (loaded.value) {
+            return h(Comp);
+          } else if (error.value && errorComponent) {
+            console.error(`asyncComponent is timeout ${timeout}`);
+            return h(errorComponent);
+          } else if (loading.value && loadingComponent) {
+            return h(loadingComponent);
+          } else {
+            h(Fragment, []);
+          }
+        };
+      }
+    };
   }
 
   // packages/runtime-dom/src/nodeOps.ts
